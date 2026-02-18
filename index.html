@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jadwal Puasa Manual</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+body{
+font-family:Arial;
+background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);
+display:flex;justify-content:center;align-items:center;
+min-height:100vh;margin:0;color:white;
+}
+.container{
+background:rgba(255,255,255,0.08);
+padding:20px;border-radius:20px;
+width:420px;box-shadow:0 10px 30px rgba(0,0,0,0.3);
+}
+h2{text-align:center;}
+input{
+width:100%;padding:8px;border-radius:8px;
+border:none;margin-bottom:10px;
+}
+button{
+padding:6px 10px;margin:3px;
+border:none;border-radius:6px;
+cursor:pointer;font-size:13px;
+}
+.hijau{background:#27ae60;color:white;}
+.merah{background:#c0392b;color:white;}
+.biru{background:#2980b9;color:white;}
+.orange{background:#f39c12;color:white;}
+
+.list{
+margin-top:10px;
+max-height:200px;
+overflow:auto;
+background:rgba(0,0,0,0.2);
+padding:10px;border-radius:10px;
+font-size:14px;
+}
+.total{margin-top:10px;font-weight:bold;}
+.actions{text-align:center;margin-top:10px;}
+</style>
+</head>
+<body>
+
+<div class="container">
+<h2>📅 Jadwal Puasa</h2>
+
+<input type="text" id="nama" placeholder="Masukkan Nama">
+<input type="date" id="tanggal">
+
+<div style="text-align:center;">
+<button onclick="setStatus('puasa')" class="hijau">Puasa</button>
+<button onclick="setStatus('tidak')" class="merah">Tidak</button>
+</div>
+
+<div class="total">
+Total Puasa: <span id="total">0</span> Hari
+</div>
+
+<div class="list">
+<strong>Riwayat:</strong>
+<div id="riwayat"></div>
+</div>
+
+<div class="actions">
+<button onclick="downloadPDF()" class="biru">Download PDF</button>
+<button onclick="hapus()" class="orange">Hapus Semua</button>
+</div>
+
+</div>
+
+<script>
+const { jsPDF } = window.jspdf;
+const namaInput = document.getElementById("nama");
+const tanggalInput = document.getElementById("tanggal");
+
+namaInput.value = localStorage.nama || "";
+namaInput.oninput = () => localStorage.nama = namaInput.value;
+
+const getData = () => JSON.parse(localStorage.data || "{}");
+const saveData = d => localStorage.data = JSON.stringify(d);
+
+function setStatus(status){
+const tgl = tanggalInput.value;
+if(!tgl){ alert("Pilih tanggal dulu!"); return; }
+
+const data = getData();
+data[tgl] = status;
+saveData(data);
+render();
+tanggalInput.value="";
+}
+
+function render(){
+const data = getData();
+const riwayat = document.getElementById("riwayat");
+riwayat.innerHTML="";
+let total=0;
+
+Object.keys(data).sort().reverse().forEach(tgl=>{
+const status = data[tgl]==="puasa"?"Puasa":"Tidak";
+if(data[tgl]==="puasa") total++;
+
+riwayat.innerHTML += `
+<div>${new Date(tgl).toLocaleDateString("id-ID")} - ${status}</div>
+`;
+});
+
+document.getElementById("total").textContent=total;
+}
+
+function hapus(){
+if(confirm("Hapus semua data?")){
+localStorage.removeItem("data");
+render();
+}
+}
+
+function downloadPDF(){
+const doc = new jsPDF();
+const data = getData();
+const nama = namaInput.value || "Tanpa Nama";
+
+doc.text("Laporan Jadwal Puasa",20,20);
+doc.text("Nama: "+nama,20,30);
+
+let y=40,total=0;
+Object.keys(data).sort().forEach(t=>{
+doc.text(t+" - "+data[t],20,y);
+if(data[t]==="puasa") total++;
+y+=8;
+});
+
+doc.text("Total Puasa: "+total+" hari",20,y+10);
+doc.save("jadwal-puasa.pdf");
+}
+
+render();
+</script>
+
+</body>
+</html>
