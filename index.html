@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jadwal Puasa PRO MAX</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+:root{
+--bg1:#0f2027;
+--bg2:#203a43;
+--bg3:#2c5364;
+--card:rgba(255,255,255,0.08);
+--text:white;
+}
+.light{
+--bg1:#f5f7fa;
+--bg2:#c3cfe2;
+--bg3:#e2ebf0;
+--card:white;
+--text:#222;
+}
+
+body{
+font-family:Arial, sans-serif;
+background:linear-gradient(135deg,var(--bg1),var(--bg2),var(--bg3));
+display:flex;
+justify-content:center;
+align-items:center;
+min-height:100vh;
+margin:0;
+color:var(--text);
+transition:0.3s;
+}
+
+.container{
+background:var(--card);
+backdrop-filter:blur(10px);
+padding:25px;
+border-radius:20px;
+width:420px;
+box-shadow:0 10px 30px rgba(0,0,0,0.3);
+}
+
+h2{text-align:center;}
+
+input{
+width:100%;
+padding:8px;
+border-radius:8px;
+border:none;
+margin-bottom:10px;
+}
+
+button{
+padding:8px 12px;
+margin:5px 2px;
+border:none;
+border-radius:8px;
+cursor:pointer;
+font-weight:bold;
+}
+
+.hijau{background:#27ae60;color:white;}
+.merah{background:#c0392b;color:white;}
+.biru{background:#2980b9;color:white;}
+.orange{background:#f39c12;color:white;}
+.ungu{background:#8e44ad;color:white;}
+
+.status-box{
+margin-top:10px;
+padding:8px;
+background:rgba(0,0,0,0.2);
+border-radius:8px;
+text-align:center;
+}
+
+.daftar{
+margin-top:15px;
+max-height:200px;
+overflow:auto;
+background:rgba(0,0,0,0.2);
+padding:10px;
+border-radius:10px;
+font-size:14px;
+}
+
+.total{
+margin-top:10px;
+font-weight:bold;
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+<h2>📅 Jadwal Puasa</h2>
+
+<input type="text" id="nama" placeholder="Masukkan Nama">
+
+<div id="today"></div>
+
+<div style="text-align:center;margin-top:10px;">
+<button onclick="setStatus('puasa')" class="hijau">Puasa</button>
+<button onclick="setStatus('tidak')" class="merah">Tidak</button>
+</div>
+
+<div class="status-box">
+<h3 id="status"></h3>
+</div>
+
+<div class="total">
+Total Puasa: <span id="totalPuasa">0</span> Hari
+</div>
+
+<div class="daftar">
+<strong>Riwayat:</strong>
+<div id="list"></div>
+</div>
+
+<div style="text-align:center;margin-top:10px;">
+<button onclick="downloadPDF()" class="biru">Download PDF</button>
+<button onclick="hapusData()" class="orange">Hapus Semua</button>
+<button onclick="toggleTheme()" class="ungu">Ganti Tema</button>
+</div>
+
+</div>
+
+<script>
+const { jsPDF } = window.jspdf;
+const today = new Date();
+const isoDate = today.toISOString().split("T")[0];
+
+document.getElementById("today").textContent =
+today.toLocaleDateString("id-ID",{
+weekday:"long",year:"numeric",month:"long",day:"numeric"
+});
+
+// AUTO SIMPAN NAMA
+const namaInput=document.getElementById("nama");
+namaInput.value=localStorage.getItem("namaPuasa")||"";
+namaInput.addEventListener("input",()=>{
+localStorage.setItem("namaPuasa",namaInput.value);
+});
+
+// THEME
+if(localStorage.getItem("theme")==="light"){
+document.body.classList.add("light");
+}
+function toggleTheme(){
+document.body.classList.toggle("light");
+localStorage.setItem("theme",
+document.body.classList.contains("light")?"light":"dark");
+}
+
+// DATA
+function getData(){
+return JSON.parse(localStorage.getItem("puasaData"))||{};
+}
+function saveData(d){
+localStorage.setItem("puasaData",JSON.stringify(d));
+}
+
+function setStatus(val){
+const d=getData();
+d[isoDate]=val;
+saveData(d);
+render();
+}
+
+function hapusData(){
+if(confirm("Hapus semua data?")){
+localStorage.removeItem("puasaData");
+render();
+}
+}
+
+function render(){
+const data=getData();
+const list=document.getElementById("list");
+const totalEl=document.getElementById("totalPuasa");
+const statusEl=document.getElementById("status");
+
+list.innerHTML="";
+let puasa=0;
+
+Object.keys(data).sort().reverse().forEach(date=>{
+const div=document.createElement("div");
+const status=data[date]==="puasa"?"Puasa":"Tidak";
+div.textContent=
+new Date(date).toLocaleDateString("id-ID")+" - "+status;
+
+if(status==="Puasa") puasa++;
+
+list.appendChild(div);
+});
+
+totalEl.textContent=puasa;
+
+statusEl.textContent=
+data[isoDate]==="puasa"?"Hari ini: Puasa ✅":
+data[isoDate]==="tidak"?"Hari ini: Tidak Puasa ❌":
+"Belum memilih hari ini";
+}
+
+// PDF
+function downloadPDF(){
+const doc=new jsPDF();
+const data=getData();
+const nama=namaInput.value||"Tanpa Nama";
+
+doc.setFontSize(16);
+doc.text("LAPORAN JADWAL PUASA",20,20);
+doc.setFontSize(12);
+doc.text("Nama: "+nama,20,30);
+
+let y=40;
+let total=0;
+
+Object.keys(data).sort().forEach(date=>{
+const status=data[date]==="puasa"?"Puasa":"Tidak";
+doc.text(
+new Date(date).toLocaleDateString("id-ID")+" - "+status,
+20,y
+);
+if(status==="Puasa") total++;
+y+=8;
+});
+
+doc.text("Total Puasa: "+total+" hari",20,y+10);
+doc.save("laporan-puasa.pdf");
+}
+
+render();
+</script>
+
+</body>
+</html>
